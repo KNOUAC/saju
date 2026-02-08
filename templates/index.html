@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 사주 코디네이터</title>
+    <style>
+        body {
+            font-family: 'Suit', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f3e5f5 100%); /* 초록에서 보라로 */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #4a148c; margin-bottom: 30px; } /* 진한 보라 */
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #2e7d32; font-weight: bold; } /* 진한 초록 */
+        input {
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
+            box-sizing: border-box; font-size: 16px;
+        }
+        button {
+            width: 100%; padding: 15px; background-color: #6a1b9a; color: white; /* 보라색 버튼 */
+            border: none; border-radius: 8px; font-size: 18px; cursor: pointer;
+            transition: background 0.3s; margin-top: 20px;
+        }
+        button:hover { background-color: #4a148c; }
+        #result {
+            margin-top: 30px; text-align: left; line-height: 1.6;
+            background: #f1f8e9; padding: 20px; border-radius: 10px; display: none;
+        }
+        .loader { display: none; margin-top: 20px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 오늘의 사주 코디</h1>
+        <div class="input-group">
+            <label>태어난 연도 (YYYY)</label>
+            <input type="number" id="year" placeholder="예: 1990">
+        </div>
+        <div class="input-group">
+            <label>태어난 월</label>
+            <input type="number" id="month" placeholder="예: 5">
+        </div>
+        <div class="input-group">
+            <label>태어난 일</label>
+            <input type="number" id="day" placeholder="예: 20">
+        </div>
+        <div class="input-group">
+            <label>태어난 시간 (선택)</label>
+            <input type="text" id="time" placeholder="예: 14:30 (모르면 비워둠)">
+        </div>
+
+        <button onclick="analyzeSaju()">분석하기</button>
+        <div class="loader" id="loader">✨ 우주의 기운을 분석 중입니다...</div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function analyzeSaju() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const day = document.getElementById('day').value;
+            const time = document.getElementById('time').value || "시간 모름";
+
+            if(!year || !month || !day) {
+                alert("생년월일을 모두 입력해주세요!");
+                return;
+            }
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ year, month, day, time })
+                });
+                const data = await response.json();
+                
+                document.getElementById('result').innerHTML = data.result;
+                document.getElementById('result').style.display = 'block';
+            } catch (error) {
+                alert("오류가 발생했습니다. 다시 시도해주세요.");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
