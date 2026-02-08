@@ -27,28 +27,23 @@
             margin: 15px 0 8px 5px; display: block;
         }
 
+        /* 휠 피커 스타일 */
         .picker-box {
             position: relative; height: 150px; display: flex;
             background: #fff; border-radius: 15px; overflow: hidden; margin-bottom: 10px;
             border: 1px solid #f0f0f0; transition: all 0.3s ease;
         }
-        
-        .picker-box.disabled {
-            opacity: 0.3; pointer-events: none; background: #eee; height: 50px;
-        }
-
+        .picker-box.disabled { opacity: 0.3; pointer-events: none; background: #eee; height: 50px; }
         .picker-highlight {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 92%; height: 36px; background: rgba(233, 150, 122, 0.1);
             border-radius: 8px; pointer-events: none; z-index: 0;
         }
-
         .wheel {
             flex: 1; height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
             scrollbar-width: none; -ms-overflow-style: none; z-index: 1;
         }
         .wheel::-webkit-scrollbar { display: none; }
-        
         .wheel ul { list-style: none; padding: 57px 0; margin: 0; text-align: center; }
         .wheel li {
             height: 36px; display: flex; align-items: center; justify-content: center;
@@ -70,10 +65,27 @@
         }
         .btn-submit:active { transform: scale(0.98); }
 
+        /* --- 결과 화면 스타일 수정 --- */
         #result {
-            margin-top: 20px; font-family: 'Noto Serif KR', serif;
+            margin-top: 25px; 
+            font-family: 'Noto Serif KR', serif; /* 기본은 본명조 */
             line-height: 1.7; color: #444; font-size: 0.95rem;
         }
+        
+        /* 인삿말 전용 스타일 (Gothic A1 적용 + 여백 추가) */
+        .greeting {
+            font-family: 'Gothic A1', sans-serif !important;
+            color: #333;
+            margin-bottom: 30px; /* 인삿말과 아래 내용 사이 간격 넓힘 */
+            line-height: 1.6;
+        }
+
+        /* 굵은 글씨 스타일 */
+        b, strong {
+            font-weight: 700;
+            color: #222;
+        }
+
         details { background: #fcfcfc; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #eee; }
         summary { font-family: 'Gothic A1'; font-weight: bold; color: var(--purple); cursor: pointer; font-size: 0.9rem; list-style: none; }
         summary::-webkit-details-marker { display: none; }
@@ -83,7 +95,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>나의 운세 정보 입력</h1>
+        <h1>사주(四柱) 입력</h1>
         
         <span class="section-label">생년월일</span>
         <div class="picker-box" id="date-picker-box">
