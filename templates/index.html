@@ -16,29 +16,64 @@
         }
 
         .container {
-            background: white; padding: 25px 20px; border-radius: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 360px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            width: 100%; max-width: 360px;
+            position: relative; /* 언어 버튼 배치를 위해 추가 */
         }
 
-        h1 { font-size: 1.1rem; text-align: center; color: #333; margin-bottom: 20px; }
+        /* --- [추가] 언어 선택 버튼 스타일 (KRDS 스타일 모방) --- */
+        .krds-language {
+            position: absolute; top: 20px; right: 20px; z-index: 100;
+        }
+        .krds-btn {
+            background: #fff; border: 1px solid #ddd; padding: 5px 10px;
+            border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+            display: flex; align-items: center; gap: 5px; color: #555;
+            transition: all 0.2s;
+        }
+        .krds-btn:hover { background: #f9f9f9; border-color: var(--purple); color: var(--purple); }
         
-        .section-label {
-            font-size: 0.9rem; font-weight: bold; color: var(--purple);
-            margin: 15px 0 8px 5px; display: block;
+        .drop-menu {
+            display: none; position: absolute; top: 100%; right: 0;
+            background: white; border: 1px solid #eee; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 140px; margin-top: 5px;
+            overflow: hidden; z-index: 101;
         }
+        .drop-menu.active { display: block; }
+        
+        .drop-list { list-style: none; padding: 0; margin: 0; }
+        .item-link {
+            display: block; padding: 10px 15px; text-decoration: none;
+            color: #333; font-size: 0.85rem; border-bottom: 1px solid #f9f9f9;
+        }
+        .item-link:hover { background: #fdfdfd; color: var(--purple); }
+        .item-link.active { font-weight: bold; color: var(--purple); background: #f5f0fa; }
+        
+        /* 아이콘 대체 (SVG가 없을 경우를 대비해 텍스트/이모지로 처리) */
+        .ico-global::before { content: '🌐'; margin-right: 3px; }
+        .ico-toggle::before { content: '▼'; font-size: 0.7em; margin-left: 3px; }
+        /* ---------------------------------------------------- */
 
-        /* 휠 피커 스타일 */
+        h1 { font-size: 1.1rem; text-align: center; color: #333; margin-bottom: 20px; margin-top: 30px; /* 버튼 때문에 여백 조정 */ }
+        
+        .section-label { font-size: 0.9rem; font-weight: bold; color: var(--purple); margin: 15px 0 8px 5px; display: block; }
+
         .picker-box {
             position: relative; height: 150px; display: flex;
             background: #fff; border-radius: 15px; overflow: hidden; margin-bottom: 10px;
             border: 1px solid #f0f0f0; transition: all 0.3s ease;
         }
         .picker-box.disabled { opacity: 0.3; pointer-events: none; background: #eee; height: 50px; }
+
         .picker-highlight {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 92%; height: 36px; background: rgba(233, 150, 122, 0.1);
             border-radius: 8px; pointer-events: none; z-index: 0;
         }
+
         .wheel {
             flex: 1; height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
             scrollbar-width: none; -ms-overflow-style: none; z-index: 1;
@@ -65,36 +100,36 @@
         }
         .btn-submit:active { transform: scale(0.98); }
 
-        /* --- 결과 화면 스타일 수정 --- */
-        #result {
-            margin-top: 25px; 
-            font-family: 'Noto Serif KR', serif; /* 기본은 본명조 */
-            line-height: 1.7; color: #444; font-size: 0.95rem;
-        }
-        
-        /* 인삿말 전용 스타일 (Gothic A1 적용 + 여백 추가) */
-        .greeting {
-            font-family: 'Gothic A1', sans-serif !important;
-            color: #333;
-            margin-bottom: 30px; /* 인삿말과 아래 내용 사이 간격 넓힘 */
-            line-height: 1.6;
-        }
-
-        /* 굵은 글씨 스타일 */
-        b, strong {
-            font-weight: 700;
-            color: #222;
-        }
-
+        #result { margin-top: 25px; font-family: 'Noto Serif KR', serif; line-height: 1.7; color: #444; font-size: 0.95rem; }
+        .greeting { font-family: 'Gothic A1', sans-serif !important; color: #333; margin-bottom: 30px; line-height: 1.6; }
+        b, strong { font-weight: 700; color: #222; }
         details { background: #fcfcfc; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #eee; }
         summary { font-family: 'Gothic A1'; font-weight: bold; color: var(--purple); cursor: pointer; font-size: 0.9rem; list-style: none; }
         summary::-webkit-details-marker { display: none; }
-        
         .loader { display: none; text-align: center; margin-top: 15px; font-size: 0.85rem; color: #999; }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="krds-drop-wrap krds-language">
+            <button type="button" class="krds-btn small text drop-btn" onclick="toggleLanguageMenu()">
+                <i class="svg-icon ico-global"></i>
+                <span id="current-lang-text">한국어</span>
+                <i class="svg-icon ico-toggle"></i>
+            </button>
+            <div class="drop-menu" id="lang-menu">
+                <div class="drop-in">
+                    <ul class="drop-list">
+                        <li><a href="#" class="item-link active" onclick="selectLanguage('ko', '한국어', event)">한국어</a></li>
+                        <li><a href="#" class="item-link" onclick="selectLanguage('en', 'English', event)">English</a></li>
+                        <li><a href="#" class="item-link" onclick="selectLanguage('zh', '中文', event)">中文</a></li>
+                        <li><a href="#" class="item-link" onclick="selectLanguage('ja', '日本語', event)">日本語</a></li>
+                        <li><a href="#" class="item-link" onclick="selectLanguage('fr', 'français', event)">français</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <h1>사주(四柱) 입력</h1>
         
         <span class="section-label">생년월일(양력)</span>
@@ -121,14 +156,50 @@
             날짜를 선택해주세요
         </button>
         
-        <div class="loader" id="loader">✨ Theo가 당신의 기운을 읽고 있습니다...</div>
+        <div class="loader" id="loader">✨ Theo is reading your energy...</div>
         <div id="result"></div>
     </div>
 
     <script>
         const dateWheels = ['year', 'month', 'day'];
         const timeWheels = ['ampm', 'hour', 'min'];
-        const yearRange = [1944, 2026];
+        const yearRange = [1950, 2026];
+        
+        // 현재 선택된 언어 (기본값: 한국어)
+        let selectedLang = 'ko';
+
+        // --- 언어 선택 관련 스크립트 ---
+        function toggleLanguageMenu() {
+            const menu = document.getElementById('lang-menu');
+            menu.classList.toggle('active');
+        }
+
+        function selectLanguage(code, text, event) {
+            event.preventDefault();
+            selectedLang = code;
+            
+            // 버튼 텍스트 변경
+            document.getElementById('current-lang-text').innerText = text;
+            
+            // 메뉴 닫기
+            document.getElementById('lang-menu').classList.remove('active');
+
+            // 활성화 스타일 변경
+            document.querySelectorAll('.item-link').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // (선택사항) 버튼 텍스트도 언어에 맞게 바꾸고 싶다면 여기에 추가
+            // 예: if(code === 'en') document.getElementById('submit-btn').innerText = "Select Date";
+        }
+
+        // 메뉴 바깥 클릭시 닫기
+        document.addEventListener('click', function(e) {
+            const wrapper = document.querySelector('.krds-language');
+            if (!wrapper.contains(e.target)) {
+                document.getElementById('lang-menu').classList.remove('active');
+            }
+        });
+        // -----------------------------
 
         function init() {
             createList('year-list', yearRange[0], yearRange[1], '년');
@@ -250,13 +321,17 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        year: vals.y, month: vals.m, day: vals.d, time: vals.timeVal || "모름"
+                        year: vals.y, 
+                        month: vals.m, 
+                        day: vals.d, 
+                        time: vals.timeVal || "모름",
+                        language: selectedLang // [중요] 선택된 언어 정보 전송
                     })
                 });
                 const json = await res.json();
                 document.getElementById('result').innerHTML = json.result;
             } catch (e) {
-                document.getElementById('result').innerHTML = "Theo와 연결이 지연되고 있습니다.";
+                document.getElementById('result').innerHTML = "Theo와 연결이 지연되고 있습니다. (Connection Issue)";
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
