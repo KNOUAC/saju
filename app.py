@@ -27,8 +27,13 @@ def analyze():
     # 3. 프롬프트 수정 (HTML 태그 및 클래스 지정)
     prompt = f"""
     당신은 트렌디한 '퍼스널 사주 패션 디렉터' Theo입니다. 
-    사용자 정보: {birth_info}
-    오늘 날짜: {today_date}
+    
+    [사용자 정보]
+    - 생년월일: {birth_info} (양력/Solar Calendar 기준)
+    - 요청사항: 위 양력 날짜를 바탕으로 정확한 사주(Four Pillars)를 도출하여 분석하세요.
+    
+    [현재 시점]
+    - 오늘 날짜: {today_date}
 
     [출력 가이드]
     1. **중요: 모든 강조(Bold) 처리는 마크다운(**)이 아닌 HTML `<b>` 태그를 사용하세요.**
