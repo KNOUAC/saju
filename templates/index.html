@@ -97,7 +97,34 @@
         details { background: #FDFDFD; padding: 12px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-light); }
         summary { font-family: 'Gothic A1'; font-weight: 700; color: var(--text-dark); cursor: pointer; font-size: 0.85rem; }
         
-        .loader { display: none; text-align: center; padding: 20px; font-size: 0.85rem; color: var(--text-mute); }
+        /* 기존 .loader 부분을 아래 내용으로 완전히 교체해주세요 */
+        .loader { 
+            display: none; 
+            text-align: center; 
+            padding: 20px; 
+            font-size: 1rem;       /* 효과가 잘 보이도록 크기 약간 키움 */
+            font-weight: 700;      /* 굵게 해야 색상이 선명함 */
+            letter-spacing: -0.5px;
+            
+            /* 무지개 그라데이션 설정 */
+            background: linear-gradient(to right, #ff5f6d, #ffc371, #ffef96, #56ab2f, #2f80ed, #9d50bb);
+            background-size: 200% auto;
+            
+            /* 배경을 텍스트 모양으로 잘라내기 (핵심) */
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            
+            /* 흐르는 애니메이션 적용 */
+            animation: shine 3s linear infinite;
+        }
+        
+        /* 애니메이션 키프레임 (style 태그 내 아무 곳이나 추가) */
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
     </style>
 </head>
 <body>
