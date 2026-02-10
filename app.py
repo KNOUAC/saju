@@ -53,9 +53,8 @@ def analyze():
         """
 
         # 4. 모델 호출 (핵심 수정 부분)
-        # 'gemini-1.5-flash'라는 별칭 대신, 구체적인 버전명(002)을 사용해야 404 오류가 사라집니다.
         response = client.models.generate_content(
-            model="gemini-1.5-flash-002", 
+            model="gemini-3-flash-preview", 
             contents=prompt
         )
         
@@ -68,7 +67,7 @@ def analyze():
         
         # 에러 메시지 사용자 친화적으로 변환
         if "404" in error_msg:
-             msg = "모델 버전을 찾을 수 없습니다. (gemini-1.5-flash-002 확인 필요)"
+             msg = "404"
         elif "429" in error_msg:
              msg = "사용량이 많아 잠시 지연되고 있습니다. 10초 뒤 다시 시도해주세요."
         else:
