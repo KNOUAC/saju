@@ -1,16 +1,12 @@
 import os
-import logging
 from flask import Flask, render_template, request, jsonify
 from google import genai
 from datetime import datetime, timedelta
 
-# 로그 설정 (에러 발생 시 터미널에서 확인하기 위함)
-logging.basicConfig(level=logging.DEBUG)
-
 app = Flask(__name__)
 
-# 1. API 클라이언트 설정
-# 환경 변수에서 가져오거나, 테스트 시 여기에 직접 키를 입력해서 확인해보세요.
+# [Quickstart 문서 기준] 클라이언트 초기화
+# API 키는 환경 변수에서 가져옵니다.
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -23,26 +19,25 @@ def analyze():
     try:
         data = request.json
         
-        # 입력 데이터 검증 및 기본값 설정
+        # 1. 입력 데이터 가져오기
         year = data.get('year', '')
         month = data.get('month', '')
         day = data.get('day', '')
         time_str = data.get('time', '시간 모름')
         
-        # 생년월일 정보 조합
         birth_info = f"{year}년 {month}월 {day}일 ({time_str})"
         
-        # 오늘 날짜 (KST)
+        # 2. 오늘 날짜 (KST)
         korea_now = datetime.now() + timedelta(hours=9)
         today_date = korea_now.strftime("%Y년 %m월 %d일")
         
-        # 프롬프트 구성
+        # 3. 프롬프트 (HTML 태그 사용 강조)
         prompt = f"""
         당신은 트렌디한 '퍼스널 사주 패션 디렉터' Theo입니다. 
         
         [사용자 정보]
         - 생년월일: {birth_info} (양력/Solar Calendar 기준)
-        - 요청사항: 위 양력 날짜를 바탕으로 정확한 사주(Four Pillars)를 도출하여 분석하세요.
+        - 요청사항: 위 양력 날짜를 바탕으로 정확한 사주를 분석하세요.
         
         [현재 시점]
         - 오늘 날짜: {today_date}
@@ -56,28 +51,20 @@ def analyze():
         5. 톤앤매너: 전문적이고 우아한 어조.
         """
 
-        # 2. 모델 호출 (핵심 수정 부분)
-        # 문서의 'gemini-3-flash-preview' 대신 현재 사용 가능한 모델 사용
+        # 4. 모델 호출 (여기가 핵심!)
+        # 문서에 나오는 'gemini-2.0' 대신 안정적인 'gemini-1.5-flash'를 사용합니다.
         response = client.models.generate_content(
             model="gemini-1.5-flash", 
             contents=prompt
         )
         
+        # 결과 텍스트 반환
         return jsonify({'result': response.text})
 
     except Exception as e:
-        # 서버 로그에 구체적인 에러 출력
-        app.logger.error(f"Error occurred: {str(e)}")
-        # 사용자에게 에러 메시지 반환 (디버깅용)
-        error_msg = str(e)
-        if "404" in error_msg:
-            msg = "모델을 찾을 수 없습니다. (모델명 확인 필요)"
-        elif "403" in error_msg:
-            msg = "API 키 오류 또는 권한이 없습니다."
-        else:
-            msg = f"오류가 발생했습니다: {error_msg}"
-            
-        return jsonify({'result': f"<div class='greeting'>죄송합니다. {msg}</div>"})
+        print(f"Error: {e}") # 서버 콘솔에 에러 출력
+        # 사용자 화면에 에러 표시
+        return jsonify({'result': f"<div class='greeting'>연결 중 오류가 발생했습니다.<br>({str(e)})</div>"})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
