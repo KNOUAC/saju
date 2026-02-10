@@ -145,7 +145,8 @@
         const dateWheels = ['year', 'month', 'day'];
         const timeWheels = ['ampm', 'hour', 'min'];
         const yearRange = [1944, 2026];
-        const itemHeight = 34; // 조정된 높이
+        // 새 UI 디자인(34px 높이)에 정확히 맞춘 로직
+        const itemHeight = 34;
 
         function init() {
             createList('year-list', yearRange[0], yearRange[1], '년');
@@ -215,14 +216,18 @@
 
         function getWheelVal(id) {
             const wheel = document.getElementById(`${id}-wheel`);
+            // 소수점 발생 시 가장 가까운 인덱스 선택
             const idx = Math.round(wheel.scrollTop / itemHeight);
             const items = wheel.querySelectorAll('li');
+            
             items.forEach(li => li.classList.remove('active'));
+            
             if(items[idx]) {
                 items[idx].classList.add('active');
                 return items[idx].dataset.val;
             }
-            return null;
+            // 값이 없을 경우 첫 번째 값이라도 반환하도록 방어 코드 추가
+            return items[0] ? items[0].dataset.val : null;
         }
 
         function updateDisplay() {
@@ -242,19 +247,36 @@
 
         async function analyzeSaju() {
             const vals = updateDisplay();
+            // 데이터 유효성 검사
+            if(!vals.y || !vals.m || !vals.d) {
+                alert("날짜를 다시 확인해주세요.");
+                return;
+            }
+
             document.getElementById('loader').style.display = 'block';
-            document.getElementById('result').innerHTML = "";
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = "";
 
             try {
                 const res = await fetch('/analyze', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ year: vals.y, month: vals.m, day: vals.d, time: vals.timeVal })
+                    body: JSON.stringify({
+                        year: vals.y, 
+                        month: vals.m, 
+                        day: vals.d, 
+                        time: vals.timeVal
+                    })
                 });
+
+                if (!res.ok) throw new Error('Network response was not ok');
+
                 const json = await res.json();
-                document.getElementById('result').innerHTML = `<div class="result-card">${json.result}</div>`;
+                // 기존 코드와 동일한 출력 방식 유지 (안정성)
+                resultDiv.innerHTML = `<div class="result-card">${json.result}</div>`;
             } catch (e) {
-                document.getElementById('result').innerHTML = `<div class="result-card">서버 연결에 실패했습니다.</div>`;
+                console.error("Fetch Error:", e);
+                resultDiv.innerHTML = `<div class="result-card">연결에 실패했습니다. 서버가 실행 중인지 확인해주세요.</div>`;
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
