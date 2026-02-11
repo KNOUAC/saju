@@ -1,11 +1,11 @@
 import os
 import logging
-import requests  # requests 모듈 추가
+import requests
 from flask import Flask, render_template, request, jsonify
 from google import genai
 from datetime import datetime, timedelta
 
-# Flask 기본 로깅은 유지 (치명적 오류 대비)
+# Flask 기본 로깅
 logging.basicConfig(level=logging.ERROR)
 
 app = Flask(__name__)
@@ -14,19 +14,19 @@ app = Flask(__name__)
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# 슬랙 웹훅 URL (환경변수에서 가져옴)
+# 슬랙 웹훅 URL
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
 def send_slack_message(message):
     """슬랙으로 메시지를 보내는 헬퍼 함수"""
     if not SLACK_WEBHOOK_URL:
-        return # 웹훅 URL이 없으면 아무것도 안 함
+        return 
 
     try:
         payload = {"text": message}
         requests.post(SLACK_WEBHOOK_URL, json=payload)
     except Exception:
-        pass # 슬랙 전송 실패해도 앱은 멈추면 안 됨
+        pass 
 
 @app.route('/')
 def index():
@@ -34,7 +34,6 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    # 시도할 모델 리스트
     candidate_models = [
         "gemini-3-flash-preview",
         "gemini-3-pro-preview",
@@ -51,6 +50,7 @@ def analyze():
     korea_now = datetime.now() + timedelta(hours=9)
     today_date = korea_now.strftime("%Y년 %m월 %d일")
     
+    # 프롬프트: 문구 변경 없음, HTML 구조 유지
     prompt = f"""
     당신은 트렌디한 '퍼스널 사주 패션 디렉터' Theo입니다. 
     
@@ -74,27 +74,19 @@ def analyze():
     last_error = None
     success_response = None
     
-    # --- 슬랙 알림: 분석 시작 ---
     send_slack_message(f"🔮 [Theo] 분석 요청 들어옴: {birth_info}")
 
-    # 모델 자동 순환 시도
     for model_name in candidate_models:
         try:
-            # (옵션) 너무 시끄러우면 아래 줄 주석 처리
-            # send_slack_message(f"trying: {model_name}...") 
-            
             response = client.models.generate_content(
                 model=model_name, 
                 contents=prompt
             )
             success_response = response.text
-            
-            # --- 슬랙 알림: 성공 ---
             send_slack_message(f"✅ [성공] 모델: {model_name}")
             break 
             
         except Exception as e:
-            # --- 슬랙 알림: 실패 (어떤 에러인지 확인용) ---
             send_slack_message(f"⚠️ [실패] {model_name}: {str(e)}")
             last_error = e
             continue
@@ -103,7 +95,6 @@ def analyze():
         return jsonify({'result': success_response})
     else:
         error_msg = str(last_error)
-        # --- 슬랙 알림: 전체 실패 ---
         send_slack_message(f"🚨 [전체 실패] 모든 모델 에러: {error_msg}")
         
         return jsonify({'result': f"<div class='greeting'>죄송합니다. 서버가 혼잡하여 연결에 실패했습니다.<br><span style='font-size:0.8rem; color:#999'>({error_msg})</span></div>"})
