@@ -1,103 +1,322 @@
-import os
-import logging
-import requests
-from flask import Flask, render_template, request, jsonify
-from google import genai
-from datetime import datetime, timedelta
-
-# Flask 기본 로깅
-logging.basicConfig(level=logging.ERROR)
-
-app = Flask(__name__)
-
-# API 클라이언트 설정
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
-
-# 슬랙 웹훅 URL
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
-
-def send_slack_message(message):
-    """슬랙으로 메시지를 보내는 헬퍼 함수"""
-    if not SLACK_WEBHOOK_URL:
-        return 
-
-    try:
-        payload = {"text": message}
-        requests.post(SLACK_WEBHOOK_URL, json=payload)
-    except Exception:
-        pass 
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    candidate_models = [
-        "gemini-3-flash-preview",
-        "gemini-3-pro-preview",
-        "gemini-flash-latest"
-    ]
-    
-    data = request.json
-    year = data.get('year', '')
-    month = data.get('month', '')
-    day = data.get('day', '')
-    time_str = data.get('time', '시간 모름')
-    
-    birth_info = f"{year}년 {month}월 {day}일 ({time_str})"
-    korea_now = datetime.now() + timedelta(hours=9)
-    today_date = korea_now.strftime("%Y년 %m월 %d일")
-    
-    # 프롬프트: 스타일은 CSS에서 제어하므로 HTML 구조만 깔끔하게 유지
-    prompt = f"""
-    당신은 트렌디한 '퍼스널 사주 패션 디렉터' Theo입니다. 
-    
-    [사용자 정보]
-    - 생년월일: {birth_info} (양력/Solar Calendar 기준)
-    - 요청사항: 위 양력 날짜를 바탕으로 정확한 사주를 분석하세요.
-    
-    [현재 시점]
-    - 오늘 날짜: {today_date}
-
-    [출력 가이드]
-    1. **중요: 모든 강조(Bold) 처리는 마크다운(**)이 아닌 HTML `<b>` 태그를 사용하세요.**
-    2. 인사말: 반드시 `<div class="greeting">` 태그로 감싸서 작성하세요. 
-       문구: "안녕하세요, 기다려 주셔서 감사합니다. {today_date} 기준, ... (후략)"
-    3. 소개 생략: 자기소개(Theo입니다 등)는 이미 UI에 있으므로 포함하지 마세요.
-    4. 형식: 모든 섹션('오늘의 사주 분석', '오늘의 행운 컬러', '오늘의 추천 코디', '오늘의 마음가짐')은 <details><summary>... [보기]</summary></details> 태그로 감싸서 접어두세요.
-    5. 이모티콘: '오늘의 마음가짐' 제목에는 🧠(브레인)을 사용하세요.
-    6. 톤앤매너: 본명조 서체에 어울리는 우아하고 전문적인 어조를 사용하세요.
-    """
-
-    last_error = None
-    success_response = None
-    
-    send_slack_message(f"🔮 [Theo] 분석 요청 들어옴: {birth_info}")
-
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name, 
-                contents=prompt
-            )
-            success_response = response.text
-            send_slack_message(f"✅ [성공] 모델: {model_name}")
-            break 
-            
-        except Exception as e:
-            send_slack_message(f"⚠️ [실패] {model_name}: {str(e)}")
-            last_error = e
-            continue
-
-    if success_response:
-        return jsonify({'result': success_response})
-    else:
-        error_msg = str(last_error)
-        send_slack_message(f"🚨 [전체 실패] 모든 모델 에러: {error_msg}")
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Theo :: 사주 디렉터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg-soft: #F4F4F4;
+            --card-white: #FFFFFF;
+            --border-light: #E0E0E0;
+            --text-dark: #333333;
+            --text-mute: #777777;
+            --accent-black: #222222;
+        }
         
-        return jsonify({'result': f"<div class='greeting'>죄송합니다. 서버가 혼잡하여 연결에 실패했습니다.<br><span style='font-size:0.8rem; color:#999'>({error_msg})</span></div>"})
+        body {
+            font-family: 'Gothic A1', sans-serif;
+            background: var(--bg-soft); margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh; box-sizing: border-box; color: var(--text-dark);
+        }
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+        .main-wrapper {
+            width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px;
+        }
+
+        /* 헤더 섹션 */
+        .header-card {
+            background: var(--card-white); padding: 24px; border-radius: 12px;
+            border: 1px solid var(--border-light); text-align: center;
+        }
+        h1 { font-size: 1.2rem; margin: 0; font-weight: 700; letter-spacing: -0.5px; }
+        .sub-desc { font-size: 0.8rem; color: var(--text-mute); margin-top: 4px; }
+
+        /* 입력 카드 공통 */
+        .input-card {
+            background: var(--card-white); padding: 20px; border-radius: 12px;
+            border: 1px solid var(--border-light); box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        
+        .section-label {
+            font-size: 0.85rem; font-weight: 700; color: var(--text-dark);
+            margin-bottom: 12px; display: block;
+        }
+
+        /* 피커 스타일 */
+        .picker-box {
+            position: relative; height: 140px; display: flex;
+            background: #FAFAFA; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+        .picker-box.disabled { opacity: 0.4; filter: grayscale(1); background: #F0F0F0; }
+        
+        .picker-highlight {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 95%; height: 34px; border-top: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light); pointer-events: none; z-index: 0;
+        }
+        
+        .wheel {
+            flex: 1; height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
+            scrollbar-width: none; z-index: 1;
+        }
+        .wheel::-webkit-scrollbar { display: none; }
+        .wheel ul { list-style: none; padding: 53px 0; margin: 0; text-align: center; }
+        .wheel li {
+            height: 34px; display: flex; align-items: center; justify-content: center;
+            scroll-snap-align: center; color: #BBB; transition: 0.2s; font-size: 0.9rem;
+        }
+        .wheel li.active { color: var(--accent-black); font-weight: 700; font-size: 1rem; }
+
+        /* 체크박스 영역 */
+        .toggle-area {
+            display: flex; align-items: center; gap: 10px; padding: 4px 0;
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+        }
+        .toggle-area input { width: 16px; height: 16px; cursor: pointer; }
+
+        /* 버튼 */
+        .btn-submit {
+            width: 100%; padding: 16px; background: var(--accent-black); color: white;
+            border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700;
+            cursor: pointer; transition: 0.2s; margin-top: 8px;
+        }
+        .btn-submit:active { transform: scale(0.98); background: #000; }
+
+        /* 결과 영역 스타일 수정 */
+        #result { margin-top: 8px; }
+        
+        .result-card {
+            background: var(--card-white); 
+            padding: 20px; 
+            border-radius: 12px;
+            border: 1px solid var(--border-light); 
+            
+            /* [수정] 본문 폰트 및 사이즈를 인삿말과 완전히 동일하게 설정 */
+            font-family: 'Noto Serif KR', serif;
+            font-size: 0.95rem; 
+            line-height: 1.8; 
+            color: #444; 
+        }
+
+        /* 인삿말 클래스: 본문과 동일한 스타일 유지 */
+        .greeting {
+            font-family: 'Noto Serif KR', serif;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        details { 
+            background: #FDFDFD; 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            border: 1px solid var(--border-light); 
+        }
+        
+        summary { 
+            /* 제목 폰트 유지 (Gothic A1) */
+            font-family: 'Gothic A1', sans-serif; 
+            font-weight: 700; 
+            color: var(--text-dark); 
+            cursor: pointer; 
+            font-size: 0.95rem; 
+            outline: none;
+        }
+
+        /* [수정] 상세 내용이 펼쳐졌을 때, 제목(summary) 하단에 간격 추가 */
+        details[open] summary {
+            margin-bottom: 12px;
+        }
+        
+        .loader { 
+            display: none; 
+            text-align: center; 
+            padding: 20px; 
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ff5f6d, #ffc371, #ffef96, #56ab2f, #2f80ed, #9d50bb);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: shine 3s linear infinite;
+        }
+        
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <header class="header-card">
+            <h1>사주(四柱) 입력</h1>
+            <div class="sub-desc">당신의 기운을 분석하기 위한 정보를 입력해주세요.</div>
+        </header>
+        
+        <main class="input-card">
+            <span class="section-label">생년월일 (양력)</span>
+            <div class="picker-box" id="date-picker-box">
+                <div class="picker-highlight"></div>
+                <div class="wheel" id="year-wheel"><ul id="year-list"></ul></div>
+                <div class="wheel" id="month-wheel"><ul id="month-list"></ul></div>
+                <div class="wheel" id="day-wheel"><ul id="day-list"></ul></div>
+            </div>
+            
+            <div style="margin-top: 20px; margin-bottom: 20px;">
+                <label class="toggle-area">
+                    <input type="checkbox" id="know-time" onchange="toggleTimePicker()">
+                    태어난 시간을 알고 있습니다
+                </label>
+            </div>
+
+            <span class="section-label">태어난 시간</span>
+            <div class="picker-box disabled" id="time-picker-box">
+                <div class="picker-highlight"></div>
+                <div class="wheel" id="ampm-wheel"><ul id="ampm-list"></ul></div>
+                <div class="wheel" id="hour-wheel"><ul id="hour-list"></ul></div>
+                <div class="wheel" id="min-wheel"><ul id="min-list"></ul></div>
+            </div>
+
+            <button class="btn-submit" id="submit-btn" onclick="analyzeSaju()">
+                날짜 선택 완료
+            </button>
+        </main>
+        
+        <div class="loader" id="loader">✨ Theo가 당신의 기운을 읽고 있습니다...</div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const dateWheels = ['year', 'month', 'day'];
+        const timeWheels = ['ampm', 'hour', 'min'];
+        const yearRange = [1944, 2026];
+        const itemHeight = 34;
+
+        function init() {
+            createList('year-list', yearRange[0], yearRange[1], '년');
+            createList('month-list', 1, 12, '월');
+            
+            const ampmList = document.getElementById('ampm-list');
+            ['오전', '오후'].forEach(t => {
+                const li = document.createElement('li'); li.innerText = t; li.dataset.val = t;
+                ampmList.appendChild(li);
+            });
+            createList('hour-list', 1, 12, '시');
+            createList('min-list', 0, 59, '분', true);
+
+            [...dateWheels, ...timeWheels].forEach(w => {
+                document.getElementById(`${w}-wheel`).addEventListener('scroll', updateDisplay);
+            });
+
+            setWheelPos('year', 1995 - yearRange[0]);
+            setWheelPos('month', 5);
+            setWheelPos('day', 14);
+            setWheelPos('hour', 8);
+            
+            updateDays(1995, 6);
+            setTimeout(updateDisplay, 100);
+        }
+
+        function createList(id, start, end, unit, pad=false) {
+            const list = document.getElementById(id);
+            for(let i=start; i<=end; i++) {
+                const li = document.createElement('li'); 
+                const val = pad ? String(i).padStart(2, '0') : i;
+                li.innerText = val + unit; li.dataset.val = val;
+                list.appendChild(li);
+            }
+        }
+
+        function setWheelPos(id, idx) {
+            document.getElementById(`${id}-wheel`).scrollTop = idx * itemHeight;
+        }
+
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        }
+
+        function updateDays(year, month) {
+            const dayList = document.getElementById('day-list');
+            let lastDay = 31;
+            if([4, 6, 9, 11].includes(month)) lastDay = 30;
+            else if(month === 2) lastDay = isLeapYear(year) ? 29 : 28;
+
+            const currentItems = dayList.querySelectorAll('li').length;
+            if(currentItems !== lastDay) {
+                dayList.innerHTML = "";
+                for(let i=1; i<=lastDay; i++) {
+                    const li = document.createElement('li'); li.innerText = i+'일'; li.dataset.val = i;
+                    dayList.appendChild(li);
+                }
+            }
+        }
+
+        function toggleTimePicker() {
+            const isChecked = document.getElementById('know-time').checked;
+            const box = document.getElementById('time-picker-box');
+            isChecked ? box.classList.remove('disabled') : box.classList.add('disabled');
+            updateDisplay();
+        }
+
+        function getWheelVal(id) {
+            const wheel = document.getElementById(`${id}-wheel`);
+            const idx = Math.round(wheel.scrollTop / itemHeight);
+            const items = wheel.querySelectorAll('li');
+            
+            items.forEach(li => li.classList.remove('active'));
+            
+            if(items[idx]) {
+                items[idx].classList.add('active');
+                return items[idx].dataset.val;
+            }
+            return items[0] ? items[0].dataset.val : null;
+        }
+
+        function updateDisplay() {
+            const y = parseInt(getWheelVal('year'));
+            const m = parseInt(getWheelVal('month'));
+            updateDays(y, m);
+            const d = parseInt(getWheelVal('day'));
+            
+            const isTimeKnown = document.getElementById('know-time').checked;
+            let timeText = isTimeKnown ? ` ${getWheelVal('ampm')} ${getWheelVal('hour')}:${getWheelVal('min')}` : "";
+            const date = new Date(y, m-1, d);
+            const week = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+            
+            document.getElementById('submit-btn').innerText = `${m}월 ${d}일(${week})${timeText} 분석하기`;
+            return { y, m, d, timeVal: isTimeKnown ? `${getWheelVal('ampm')} ${getWheelVal('hour')}시 ${getWheelVal('min')}분` : "모름" };
+        }
+
+        async function analyzeSaju() {
+            const vals = updateDisplay();
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('result').innerHTML = "";
+
+            try {
+                const res = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        year: vals.y, month: vals.m, day: vals.d, time: vals.timeVal || "모름"
+                    })
+                });
+                const json = await res.json();
+                document.getElementById('result').innerHTML = json.result;
+            } catch (e) {
+                document.getElementById('result').innerHTML = "Theo와 연결이 지연되고 있습니다.";
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
